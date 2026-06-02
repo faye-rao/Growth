@@ -74,11 +74,60 @@ Given the window-filtered occurrences of an event (`within_days`), and `matching
 | `min_percent` X | `total>0` and `matching/total*100 ≥ X` |
 | `predominantly` | `total>0` and `matching/total > 0.5` |
 
+## NL2SQL (M2-B): natural-language → cohort
+
+Deterministic template/slot translator (no external LLM) — predictable accuracy on
+high-frequency phrasings, confidence score, and human-review fallback:
+
+```python
+from cohort_engine import CohortEngine
+from cohort_engine.nl2sql import translate
+
+res = translate("KYC users with balance over 1000 and wallet not activated")
+res.dsl              # {"match": {...}}  -> previewable / editable (B2)
+res.confidence       # 1.0               -> matched_clauses / total (B3)
+res.requires_review  # False
+CohortEngine(...).evaluate(res.dsl)      # -> {"u1", "u4"}
+```
+
+Supported grammar (canonical phrasings): `KYC/verified users`, `wallet (not) activated`,
+`android/ios users`, `balance over/under/at least N`, `(users) in <COUNTRY|CC>`,
+`(have not) logged out / transferred / opened app [at least N times] [in the last M days]`,
+joined by `and` / `or`. Unrecognized clauses lower the confidence and are returned in
+`unmatched` for human review.
+
+## Cohort template library (M2-D2)
+
+```python
+from cohort_engine import templates as T
+T.high_value_wallet_inactive(min_balance=1000)
+T.kyc_no_transfer(days=90)
+T.dormant_users(event="App Opened", days=30)
+T.build("country_segment", codes=["AE"])     # by name
+```
+
+## REST API (optional `api` extra)
+
+```bash
+pip install -e ".[api]"
+uvicorn cohort_engine.api:app --reload
+```
+
+| Method & path | Purpose |
+|---|---|
+| `POST /segments/evaluate` | matched customer_ids + size |
+| `POST /segments/size` | audience-size estimate (M2-A6) |
+| `POST /segments/compile` | equivalent SQL |
+| `POST /nl2sql` | natural language → DSL + confidence |
+| `GET  /templates` / `POST /templates/{name}` | list / run cohort templates |
+
 ## Project layout
 
 ```
 src/cohort_engine/   models · parser · evaluator · sql_compiler · engine · sample_data
-tests/               parser · evaluator · sql_compiler · engine
+                     nl2sql (B) · templates (D2) · api (FastAPI)
+tests/               parser · evaluator · sql_compiler · engine · review_fixes
+                     nl2sql · templates · api
 examples/demo.py     runnable showcase
 TEST_CASES.md        test-case design (feature → test mapping)
 ```
