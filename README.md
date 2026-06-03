@@ -19,6 +19,22 @@ engine** (features **M2-A1 ~ A6** in the M2 feature list):
 > Out of scope for this MVP (tracked in the M2 feature list): NL2SQL (B-series),
 > Lookalike / propensity (C-series), Bitmap audience algebra, near-real-time refresh.
 
+## Platform modules
+
+This repo is a monorepo for the Botim Growth Platform. Modules share contracts via
+`growth_common` (delivery-record schema, `MessagingGateway` protocol, deterministic
+bucketing) and interoperate:
+
+| Pkg | Module | What it does |
+|---|---|---|
+| `cohort_engine` | **M2** Segmentation | rule engine + NL2SQL + templates + bitmap + SQL/REST |
+| `messaging` | **M1** Messaging Execution | unified gateway: opt-out → reachability → rate-limit → channel fallback; user-level delivery log |
+| `orchestration` | **M3** Orchestration | campaigns: deterministic A/B/N split + control hold-out + frequency cap / cross-campaign dedup; batch vs triggered |
+| `analytics` | **M4** Funnel Tracking | ordered funnel, attribution (first/last touch within window), **cross-product funnel** |
+
+`M3` resolves audiences via `M2` and sends via the `M1` gateway; `M4` consumes the
+delivery log emitted by `M1`/`M3`.
+
 ## Architecture
 
 ```
