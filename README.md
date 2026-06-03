@@ -1,5 +1,7 @@
 # Botim Growth Platform — M2 Cohort Segmentation Rule Engine (MVP)
 
+[![CI](https://github.com/faye-rao/Growth/actions/workflows/ci.yml/badge.svg)](https://github.com/faye-rao/Growth/actions/workflows/ci.yml)
+
 A self-built replacement for MoEngage's audience-segmentation rule engine
 (step ① of MoEngage's 3-step campaign flow). This MVP implements the **core rule
 engine** (features **M2-A1 ~ A6** in the M2 feature list):
