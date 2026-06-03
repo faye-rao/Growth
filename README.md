@@ -121,13 +121,46 @@ uvicorn cohort_engine.api:app --reload
 | `POST /nl2sql` | natural language → DSL + confidence |
 | `GET  /templates` / `POST /templates/{name}` | list / run cohort templates |
 
+## Scale: RoaringBitmap engine (M2 solution C)
+
+Botim launches in the UAE at **~2.5M users** (≈ ¼ of the population). At that
+scale the per-user evaluator can't answer audience-size queries interactively, so
+the bitmap engine pre-indexes users into an inverted index of RoaringBitmaps;
+audience algebra is bitmap AND/OR/ANDNOT and **size = bitmap cardinality**.
+
+```bash
+pip install -e ".[bitmap]"
+python examples/benchmark.py 2500000
+```
+
+Measured on 2.5M synthetic users (single machine):
+
+| cohort | size | latency |
+|---|---:|---:|
+| KYC & balance≥1000 & wallet not activated | 881,496 | **2.84 ms** |
+| country in [AE] | 357,217 | **0.04 ms** |
+| balance between [1000,6000] | 1,309,207 | **1.31 ms** |
+| NOT kyc | 1,000,727 | **0.44 ms** |
+| dormant tag (event-derived) | 500,310 | **0.06 ms** |
+
+(index build ~9s). Event frequency/time-window conditions are pre-computed at T+1
+into boolean tags (e.g. `dormant`) and indexed as attributes; conditions the index
+can't serve raise `BitmapUnsupported` to fall back to the compile-to-SQL path.
+
+```python
+from cohort_engine.bitmap_engine import BitmapAudienceEngine
+eng = BitmapAudienceEngine(dataset, tag_fns={"logout_anomaly": my_fn}, now=NOW)
+eng.estimate_size(spec)   # bitmap cardinality, ms at millions of users
+eng.evaluate(spec)        # set of customer_ids
+```
+
 ## Project layout
 
 ```
 src/cohort_engine/   models · parser · evaluator · sql_compiler · engine · sample_data
-                     nl2sql (B) · templates (D2) · api (FastAPI)
+                     nl2sql (B) · templates (D2) · bitmap_engine (C) · api (FastAPI)
 tests/               parser · evaluator · sql_compiler · engine · review_fixes
-                     nl2sql · templates · api
-examples/demo.py     runnable showcase
+                     nl2sql · templates · bitmap_engine · api
+examples/demo.py     runnable showcase   ·   examples/benchmark.py  2.5M-scale bench
 TEST_CASES.md        test-case design (feature → test mapping)
 ```
