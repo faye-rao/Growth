@@ -33,6 +33,8 @@ bucketing) and interoperate:
 | `analytics` | **M4** Funnel Tracking | ordered funnel, attribution (first/last touch within window), **cross-product funnel** |
 | `personalization` | **M5** 1-to-1 Personalization | `experiences/fetch`-style: audience hit + variation + **publish gating** + multi-language payload (app self-renders) |
 | `shadow` | **M7** Shadow Validation | traffic split + **dedup (no double-send)** + non-inferiority A/B gate (CI-based) |
+| `data_foundation` | **M8** Data Foundation | event ingest (validate/dedup/UAE-tz) + ID-mapping + wide tables (M2-compatible) + DQC + converted-suppression |
+| `behavioral` | **M9** Behavioral Analytics (scoped-down) | the few reports actually viewed + auto-insights + self-built RFM/churn/engagement (replacing MoEngage internals) |
 
 `M3` resolves audiences via `M2` and sends via the `M1` gateway; `M5` decides home-card
 content for the same cohorts; `M7` gates the rollout; `M4` consumes the delivery log
