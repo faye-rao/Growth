@@ -31,9 +31,18 @@ bucketing) and interoperate:
 | `messaging` | **M1** Messaging Execution | unified gateway: opt-out → reachability → rate-limit → channel fallback; user-level delivery log |
 | `orchestration` | **M3** Orchestration | campaigns: deterministic A/B/N split + control hold-out + frequency cap / cross-campaign dedup; batch vs triggered |
 | `analytics` | **M4** Funnel Tracking | ordered funnel, attribution (first/last touch within window), **cross-product funnel** |
+| `personalization` | **M5** 1-to-1 Personalization | `experiences/fetch`-style: audience hit + variation + **publish gating** + multi-language payload (app self-renders) |
+| `shadow` | **M7** Shadow Validation | traffic split + **dedup (no double-send)** + non-inferiority A/B gate (CI-based) |
 
-`M3` resolves audiences via `M2` and sends via the `M1` gateway; `M4` consumes the
-delivery log emitted by `M1`/`M3`.
+`M3` resolves audiences via `M2` and sends via the `M1` gateway; `M5` decides home-card
+content for the same cohorts; `M7` gates the rollout; `M4` consumes the delivery log
+emitted by `M1`/`M3`. See the full pipeline wired together in
+[`examples/e2e_demo.py`](examples/e2e_demo.py) (covered by `tests/test_integration_e2e.py`):
+
+```
+M2 segment → M3 orchestrate (A/B + control + freq-cap) → M1 deliver
+M5 personalize (home-card) │ M7 shadow-validate (gate) │ M4 funnel + attribution
+```
 
 ## Architecture
 
