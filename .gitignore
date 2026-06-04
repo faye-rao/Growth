@@ -14,3 +14,6 @@ coverage.xml
 test-results.xml
 htmlcov/
 pytest-output.txt
+
+# local-only memory (do not commit)
+CLAUDE.local.md
