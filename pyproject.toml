@@ -13,7 +13,7 @@ authors = [{ name = "faye-rao" }]
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest>=7.4", "fastapi>=0.110", "httpx>=0.27", "pyroaring>=0.4"]
+dev = ["pytest>=7.4", "pytest-cov>=4.0", "fastapi>=0.110", "httpx>=0.27", "pyroaring>=0.4"]
 api = ["fastapi>=0.110", "uvicorn>=0.23"]
 bitmap = ["pyroaring>=0.4"]
 
