@@ -31,3 +31,21 @@ Campaign(M3+M1,最高优先：列表+三步向导+Flow画布+频控+发送状态
 
 ## 落地顺序与工作量
 详见交接清单/工作报告与对话中的前端计划：阶段0脚手架→阶段1底座(含RTL)→阶段2按优先级(Campaign+Audience先)→阶段3横切→阶段4测试部署。MVP 子集 ~6–7 周；全量 ~2.5–3 个月（前端 ~114 人日 + 后端前置 ~15 人日）。
+
+---
+
+## 当前实现状态（2026-06-05）
+
+**已搭建并验证**（脚手架 + 基础底座 + 2 屏 MVP）：
+- 脚手架：Vite + React18 + TS + AntD5 + React Router + TanStack Query + Zustand；`vite.config.ts` 用 dev proxy `/api → :8000`(网关)；`tsc --noEmit` 干净；`vite build` 成功。
+- 基础底座：`src/layout/AppLayout.tsx`(7 服务左导航)、`src/i18n.ts`(en/ar + **RTL**，`<html dir>`+ConfigProvider direction 同步)、`src/api/client.ts`(带 MOE-APPKEY 的 fetch 封装 + 各服务 typed helper)、`src/api/types.ts`(M2 DSL 类型)、`src/store.ts`。
+- **Audience 屏**(`src/features/audience/`)：`dsl.ts`(react-querybuilder ↔ M2 DSL **双向映射**，事件节点经 `__rawNode` 哨兵无损往返) + `AudiencePage.tsx`(NL2SQL 输入→回填构造器+置信度/待审标签、可视化规则构造器、防抖实时人数预估、模板列表、DSL 预览、Compile SQL)。
+- **Campaign 屏**(`src/features/campaign/`)：活动列表 + **三步向导**(选人→A/B/N 变体→排期目标)→ `campaignApi.run` → RunResult 摘要；含 `VariantsTable`/`wizardTypes`。
+
+**测试**：单测 **28 通过**(dsl 20 + Audience 4 + Campaign 4)；**联合集成 11 通过**(打真实网关，见 `INTEGRATION-TEST-REPORT.md`)。总 **39 通过**。
+
+**未建（占位路由 + 后续）**：Analytics(M4+M9) / Personalization(M5) / Content(M6) / Experiment(M7) / Data(M8) 仅占位页；约 79 人日（见 `../docs/Frontend-Plan.md`）。
+
+**已知限制**：`dsl.ts` 数字字符串强转(country="971"→数字)需按字段 inputType 改进；i18n 仅 en/ar(hi/tl 待补)；`campaignApi.run` 返回 `any`(未生成 OpenAPI 类型)；无 Playwright E2E。
+
+**后端前置（生产化）**：导出 OpenAPI、CORS、登录换 token、列表/CRUD 端点、实时通道(人数/进度)。
