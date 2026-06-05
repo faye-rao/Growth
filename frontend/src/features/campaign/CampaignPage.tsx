@@ -16,6 +16,7 @@ import {
   Statistic,
   Steps,
   Table,
+  Tabs,
   Tag,
   Typography,
   message,
@@ -24,6 +25,7 @@ import { PlusOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { campaignApi, audienceApi } from "../../api/client";
 import VariantsTable from "./VariantsTable";
+import FlowCanvas from "./FlowCanvas";
 import {
   buildRunRequest,
   defaultWizardState,
@@ -64,6 +66,23 @@ function sentTotal(r: RunResultSummary): number {
 
 export default function CampaignPage() {
   const { t } = useTranslation();
+
+  return (
+    <Card title={t("campaign.title")}>
+      <Tabs
+        defaultActiveKey="campaigns"
+        items={[
+          { key: "campaigns", label: "Campaigns", children: <CampaignsTab /> },
+          { key: "flow", label: "Flow", children: <FlowCanvas /> },
+        ]}
+      />
+    </Card>
+  );
+}
+
+// The original campaign list + "New campaign" wizard, now the first tab.
+function CampaignsTab() {
+  const { t } = useTranslation();
   const [campaigns, setCampaigns] = useState<CampaignListItem[]>([]);
   const [wizardOpen, setWizardOpen] = useState(false);
 
@@ -80,9 +99,8 @@ export default function CampaignPage() {
   ];
 
   return (
-    <Card
-      title={t("campaign.title")}
-      extra={
+    <>
+      <Space style={{ marginBottom: 16, justifyContent: "flex-end", width: "100%" }}>
         <Button
           type="primary"
           icon={<PlusOutlined />}
@@ -90,8 +108,7 @@ export default function CampaignPage() {
         >
           {t("campaign.new")}
         </Button>
-      }
-    >
+      </Space>
       <Table<CampaignListItem>
         rowKey="id"
         dataSource={campaigns}
@@ -105,7 +122,7 @@ export default function CampaignPage() {
           onLaunched={(item) => setCampaigns((prev) => [item, ...prev])}
         />
       )}
-    </Card>
+    </>
   );
 }
 

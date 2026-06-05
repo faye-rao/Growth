@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ConfigProvider } from "antd";
 import { useTranslation } from "react-i18next";
 import App from "./App";
+import ErrorBoundary from "./auth/ErrorBoundary";
+import LoginGate from "./auth/LoginGate";
 import i18n, { isRtl } from "./i18n";
 
 const queryClient = new QueryClient({
@@ -18,9 +20,13 @@ function Root() {
   if (typeof document !== "undefined") document.documentElement.dir = dir;
   return (
     <ConfigProvider direction={dir as "ltr" | "rtl"}>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
+      <ErrorBoundary>
+        <LoginGate>
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
+        </LoginGate>
+      </ErrorBoundary>
     </ConfigProvider>
   );
 }

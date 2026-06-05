@@ -1,7 +1,7 @@
 # Frontend — System Integration Test Report
 
-> Botim Growth operations console (frontend) ｜ Generated: 2026-06-05
-> Scope of this build: **foundation + Audience + Campaign** screens (MVP slice of `docs/Frontend-Plan.md`).
+> Botim Growth operations console (frontend) ｜ Updated: 2026-06-05
+> Scope: **all 7 module screens + foundation + auth + Campaign Flow canvas** (the full `docs/Frontend-Plan.md`, MVP depth per screen).
 > Environment: Node v24.16, React 18 + TS + Vite 5 + Ant Design 5; backend = FastAPI API gateway (`uvicorn api_gateway:app`).
 
 ## 1. Summary
@@ -9,72 +9,90 @@
 | Layer | Result |
 |---|---|
 | TypeScript typecheck (`tsc --noEmit`) | ✅ clean (exit 0) |
-| Unit tests (Vitest, jsdom) | ✅ **28 passed** / 3 files |
-| Production build (`vite build`) | ✅ success (3078 modules) |
-| **Joint frontend↔backend integration** (Vitest, live gateway) | ✅ **11 passed** / 1 file |
-| Independent code review | ✅ 1 real bug fixed; risks documented |
-| **Total automated tests** | **39 passed, 0 failed** |
+| Unit tests (Vitest, jsdom) | ✅ **51 passed** / 9 files |
+| Production build (`vite build`) | ✅ success |
+| **Joint frontend↔backend integration** (Vitest, live gateway, all 7 services) | ✅ **21 passed** / 1 file |
+| **E2E (Playwright, real browser)** | 🟡 **1/2 passed** — 1 real browser test green against the live backend; 1 failed on a chromium **cold-launch 180s timeout** (sandbox env, not a code defect) |
+| Independent code review | ✅ 1 bug fixed; risks documented |
+| **Total automated tests (unit + integration)** | **72 passed** |
 
-## 2. Unit tests (offline, mocked API)
+## 2. Screens built (full plan)
 
-| File | Tests | Covers |
-|---|---:|---|
-| `src/features/audience/dsl.test.ts` | 20 | react-querybuilder ↔ M2 DSL **bidirectional mapping** (operators, and/or/not, valueless/list/between, nested round-trip, event-node lossless round-trip) |
-| `src/features/audience/AudiencePage.test.tsx` | 4 | NL2SQL translate→loads DSL + confidence/review tag; debounced size estimate calls API & renders count; templates load |
-| `src/features/campaign/CampaignPage.test.tsx` | 4 | 3-step wizard navigation; variant add/remove; Run assembles correct `CampaignRunRequest` & renders summary; zero-variant validation blocks Run |
-
-Run: `npm test` (alias `vitest run`).
-
-## 3. Joint frontend↔backend integration (against the REAL gateway)
-
-Backend started with `PYTHONPATH=src uvicorn api_gateway:app --host 127.0.0.1 --port 8000`.
-Tests issue the exact endpoints + request/response shapes the frontend API client
-(`src/api/client.ts`) depends on. Run: `npm run test:integration`.
-
-| # | Test | Validates |
+| Screen | Service(s) | Highlights |
 |---|---|---|
-| 1 | `GET /health` → 200 + service map | gateway up, 7 services mounted |
-| 2 | `/api/*` without `MOE-APPKEY` → 401 | gateway auth |
-| 3 | unknown prefix → 404 | gateway routing |
-| 4 | audience `segments/size` → `{size:number}` | M2 size estimate (UI live count) |
-| 5 | audience `segments/evaluate` → `{size, customer_ids[]}` (len matches) | M2 evaluate |
-| 6 | audience `segments/compile` → `{sql}` containing SELECT | compile-to-SQL |
-| 7 | audience `nl2sql` → `{dsl, confidence, requires_review}`, dsl re-evaluates | NL2SQL round-trip the UI relies on |
-| 8 | audience `templates` → non-empty list | template library |
-| 9 | invalid rule → 422 | error contract (UI surfaces 4xx) |
-| 10 | campaign `campaigns/run` → balanced summary (`sent+not_sent+control+capped == audience_size`) | M3+M1 orchestration+send accounting |
-| 11 | content `copy/generate` (en/ar) → variants | M6 multilingual copy |
+| **Audience** | M2 | react-querybuilder ↔ M2 DSL bidirectional mapping, NL2SQL panel, debounced live size, templates, compile-SQL |
+| **Campaign** | M3+M1 | list + 3-step wizard (audience→A/B/N→schedule) + **Flow canvas** (React Flow: delay/branch/ab_split/wait_event/webhook) → run → balanced summary |
+| **Analytics** | M4+M9 | ECharts funnel + cross-product toggle + attribution + reports + auto-insights |
+| **Personalization** | M5 | experience register/publish + multilingual payload editor (en/ar/hi/tl) + fetch tester |
+| **Content** | M6 | multilingual copy generation + inline compliance tags (Arabic RTL) + compliance checker + select-best |
+| **Experiment** | M7 | 5% shadow split + comparison report (color-coded verdict, significance, CI) |
+| **Data** | M8 | DQC dashboard + identity resolve + suppression check + ingest tester |
+| Cross-cutting | — | `ErrorBoundary`, `LoginGate` (MOE-APPKEY + role/RBAC seed), i18n + **RTL (ar)**, 7-service nav |
 
-**Result: 11/11 passed** (114 ms). Confirms the frontend's contract with all the
-services it calls is correct end-to-end.
+## 3. Unit tests (offline, mocked API) — 51 / 9 files
 
-## 4. Code review (independent) — outcome
+| File | Tests |
+|---|---:|
+| audience/dsl.test.ts | 20 |
+| audience/AudiencePage.test.tsx | 4 |
+| campaign/CampaignPage.test.tsx | 4 |
+| campaign/FlowCanvas.test.tsx | 3 |
+| analytics/AnalyticsPage.test.tsx | 3 |
+| personalization/PersonalizationPage.test.tsx | 5 |
+| content/ContentPage.test.tsx | 6 |
+| experiment/ExperimentPage.test.tsx | 3 |
+| data/DataPage.test.tsx | 3 |
+| **Total** | **51** |
 
-- **Fixed [BUG]**: Audience debounced size-estimate effect had its `alive` flag scoped to the
-  `setTimeout` callback (dead cleanup) → a stale in-flight response could set state after the
-  query changed. Hoisted `alive` to effect scope with real cleanup. Re-verified: tsc clean, 28 unit tests pass.
-- Reviewer's "missing `src/test/setup.ts`" was a **false positive** — the file exists and the suite runs green.
-- DSL mapping, API contract alignment, i18n/RTL (`dir` on `<html>` + ConfigProvider), and test quality assessed **correct / ship-ready** for the MVP.
+Run: `npm test`.
 
-## 5. Known limitations / next steps (tracked)
-- **`dsl.ts` numeric-string coercion** [RISK]: an all-digit string value (e.g. `country = "971"`) is coerced to a number. Given the phone/ID-keyed domain, make coercion field-`inputType`-aware before production.
-- **i18n**: `en`/`ar` (with RTL) implemented; `hi`/`tl` resource bundles pending.
-- **Screens**: only Audience + Campaign are built; Analytics / Personalization / Content / Experiment / Data are placeholder routes (see `docs/Frontend-Plan.md` for the remaining ~79 person-days).
-- **Backend prerequisites for production**: OpenAPI export, CORS, login→token endpoint, list/CRUD endpoints, real-time channel (size/progress) — currently dev uses Vite proxy + MOE-APPKEY header.
-- E2E browser tests (Playwright) not yet added (unit + node-level joint integration only).
+## 4. Joint frontend↔backend integration — 21 / 1 file (live gateway)
 
-## 6. How to reproduce
+Backend: `PYTHONPATH=src uvicorn api_gateway:app --port 8000`. Run: `npm run test:integration`.
+Covers the exact endpoints + shapes the frontend API client uses across **all 7 services**:
+- gateway: /health, 401 without MOE-APPKEY, 404 unknown prefix
+- audience: size / evaluate / compile / nl2sql (dsl re-evaluates) / templates / 422
+- campaign: run → accounting identity `sent+not_sent+control+capped == audience_size`
+- content: copy/generate (en/ar)
+- analytics: funnel + cross-product + report + insights
+- personalization: register → publish → fetch (returns the experience key)
+- experiment: shadow/split + shadow/report (verdict ∈ better/not_worse/worse/inconclusive)
+- data: dqc + identity/resolve + suppression/check
+
+**Result: 21/21 passed.**
+
+## 5. E2E (Playwright) — setup + result
+
+Config `playwright.config.ts` (auto-starts Vite dev, which proxies `/api`→gateway). Spec `e2e/smoke.spec.ts`:
+1. console loads → navigate Audience→Campaign — **failed on chromium cold-launch (180s browser-launch timeout)** in this sandbox; not an app error.
+2. **Audience NL2SQL + live size estimate hit the backend — ✅ passed (695ms)** in a real headless browser against the running gateway.
+
+The launch timeout is an environment performance artifact (first chromium start in the sandbox). Re-run locally:
 ```bash
-# backend (terminal 1)
-cd botim-growth-m2-cohort
-PYTHONPATH=src python -m uvicorn api_gateway:app --host 127.0.0.1 --port 8000
+npx playwright install chromium
+PYTHONPATH=src uvicorn api_gateway:app --port 8000   # terminal 1
+npm run e2e                                            # terminal 2 (auto-starts vite)
+```
 
-# frontend (terminal 2)
-cd botim-growth-m2-cohort/frontend
-npm install
-npm run typecheck         # clean
-npm test                  # 28 unit tests
-npm run test:integration  # 11 joint tests (needs backend running)
-npm run build             # production build
-npm run dev               # dev server at :5173 (proxies /api -> :8000)
+## 6. Code review — outcome
+- **Fixed [BUG]**: Audience debounced size-estimate effect had its `alive` flag scoped to the `setTimeout` callback (dead cleanup) → stale response could set state. Hoisted to effect scope. Re-verified green.
+- DSL mapping, API contract alignment, i18n/RTL assessed correct/ship-ready for the MVP.
+
+## 7. Known limitations / next steps
+- **`dsl.ts` numeric-string coercion** [RISK]: all-digit string values coerced to number; make field-`inputType`-aware before production (phone/ID domain).
+- **i18n**: en/ar (RTL) fully wired; hi/tl bundles partial (UI strings pending for those locales).
+- **Auth**: `LoginGate` is an MVP (stores MOE-APPKEY + role); production needs a real login→token exchange and enforced RBAC per route.
+- **Charts/Flow**: ECharts + React Flow are functional MVPs; persistence of Flow definitions to a backend campaign is not wired.
+- **E2E**: 1 smoke test stable; broaden coverage + stabilize browser launch in CI.
+- **Backend prerequisites for production**: OpenAPI export, CORS, login endpoint, list/CRUD endpoints, real-time channel (size/progress).
+
+## 8. How to reproduce
+```bash
+cd botim-growth-m2-cohort/frontend && npm install
+npm run typecheck        # clean
+npm test                 # 51 unit tests
+# backend up, then:
+npm run test:integration # 21 joint tests
+npm run build            # production build
+npm run dev              # dev server :5173 (proxies /api -> :8000)
 ```

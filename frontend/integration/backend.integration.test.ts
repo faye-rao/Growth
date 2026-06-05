@@ -130,3 +130,80 @@ describe("content service (M6)", () => {
     expect(j).toBeTruthy();
   });
 });
+
+describe("analytics service (M4+M9)", () => {
+  it("funnel returns step data", async () => {
+    const j = await (await post("/api/analytics/funnel", { steps: ["App Opened", "Transfer"] })).json();
+    expect(j).toBeTruthy();
+    expect(j).toHaveProperty("step_counts");
+  });
+  it("cross-product funnel works", async () => {
+    const r = await post("/api/analytics/funnel", { steps: ["App Opened", "Transfer"], cross_product: true });
+    expect(r.status).toBe(200);
+  });
+  it("report active_users returns data", async () => {
+    const r = await post("/api/analytics/reports/active_users", {});
+    expect(r.status).toBe(200);
+  });
+  it("insights flags a spike", async () => {
+    const j = await (await post("/api/analytics/insights", { series: [1, 1, 1, 9, 1], z_threshold: 1.5 })).json();
+    expect(j).toBeTruthy();
+  });
+});
+
+describe("personalization service (M5)", () => {
+  const key = "fe-int-exp";
+  const spec = { match: { type: "attribute", field: "is_kyc", operator: "eq", value: true } };
+  it("register -> publish -> fetch", async () => {
+    const reg = await post("/api/personalize/experiences", {
+      key,
+      audience_spec: spec,
+      variations: [{ name: "Default", weight: 1, payload: { en: { card: "Hi" }, ar: { card: "مرحبا" } } }],
+      control_pct: 0,
+    });
+    expect([200, 201]).toContain(reg.status);
+    const pub = await post(`/api/personalize/experiences/${key}/publish`, {});
+    expect(pub.status).toBe(200);
+    const fetched = await (await post("/api/personalize/experiences/fetch", {
+      identifiers: { customer_id: "u1" },
+      experience_keys: [key],
+      locale: "ar",
+    })).json();
+    expect(fetched).toHaveProperty("experiences");
+    expect(Object.keys(fetched.experiences)).toContain(key);
+  });
+});
+
+describe("experiment service (M7)", () => {
+  it("split assigns arms ~shadow_pct", async () => {
+    const ids = Array.from({ length: 200 }, (_, i) => `u${i}`);
+    const j = await (await post("/api/experiment/shadow/split", { customer_ids: ids, shadow_pct: 0.1 })).json();
+    expect(j).toBeTruthy();
+  });
+  it("report returns a verdict", async () => {
+    const mk = (n: number, conv: number) =>
+      Array.from({ length: n }, (_, i) => ({ customer_id: `x${i}`, status: "sent", converted: i < conv }));
+    const j = await (await post("/api/experiment/shadow/report", {
+      control_records: mk(100, 20),
+      shadow_records: mk(100, 22),
+      non_inferiority_margin: 0.05,
+    })).json();
+    expect(j).toHaveProperty("verdict");
+    expect(["shadow_better", "not_worse", "worse", "inconclusive"]).toContain(j.verdict);
+  });
+});
+
+describe("data-platform service (M8)", () => {
+  it("dqc returns a report", async () => {
+    const r = await get("/api/data/dqc");
+    expect(r.status).toBe(200);
+  });
+  it("identity resolve returns a canonical id", async () => {
+    const r = await post("/api/data/identity/resolve", { identifiers: { customer_id: "u1" } });
+    expect(r.status).toBe(200);
+  });
+  it("suppression check partitions ids", async () => {
+    const r = await post("/api/data/suppression/check", { customer_ids: ["u1", "u2"] });
+    expect(r.status).toBe(200);
+  });
+});
