@@ -1,6 +1,6 @@
-# CLAUDE.md — frontend（运营控制台 · 计划中，尚未实现）
+# CLAUDE.md — frontend（运营控制台 · 7 屏 MVP 已实现）
 
-> 现状：**前端尚未实现**，本目录目前只有本记忆文件。后端是 7 个 REST 服务 + API 网关。
+> 现状：**全部 7 屏 + 基础底座 + 鉴权 + Flow 画布已实现并通过测试**（详见文末"工作项状态清单"）。后端是 7 个 REST 服务 + API 网关。
 > 同级目录(backend `src/`)的 CLAUDE.md **不会**自动加载到此 → 前端约定都写在这里。
 
 ## 目标
@@ -46,6 +46,58 @@ Campaign(M3+M1,最高优先：列表+三步向导+Flow画布+频控+发送状态
 
 **测试**：单测 **51 通过**(9 文件)；**联合集成 21 通过**(打真实网关，全 7 服务)；**E2E**(Playwright) 1/2(1 真实浏览器用例 NL2SQL→后端通过；1 受 chromium 冷启动 180s 超时影响，非代码问题)。详见 `INTEGRATION-TEST-REPORT.md`。
 
-**已知限制**：`dsl.ts` 数字字符串强转(country="971"→数字)需按字段 inputType 改进；i18n 仅 en/ar(hi/tl 待补)；`campaignApi.run` 返回 `any`(未生成 OpenAPI 类型)；无 Playwright E2E。
+**已知限制**：`dsl.ts` 数字字符串强转(country="971"→数字)需按字段 inputType 改进；i18n 仅 en/ar(hi/tl 待补)；多个 API helper 返回 `any`(未接 openapi-typescript 自动类型)；E2E 已接入但仅冒烟级、需在 CI 稳定化。
 
 **后端前置（生产化）**：导出 OpenAPI、CORS、登录换 token、列表/CRUD 端点、实时通道(人数/进度)。
+
+---
+
+## 工作项状态清单（截至 2026-06-05）
+
+> 对照 `../docs/Frontend-Plan.md` 的阶段与屏。✅ 完成 ｜ 🟡 部分(MVP) ｜ ⬜ 未开始。
+
+### 阶段 0 · 脚手架
+- [x] ✅ Vite + React18 + TS + AntD5 工程
+- [x] ✅ 环境配置 + Vite dev proxy(/api→:8000)
+- [x] ✅ 类型化 API client（手写；🟡 openapi-typescript 自动生成未接，待后端导出 OpenAPI）
+- [ ] ⬜ ESLint/Prettier 配置
+
+### 阶段 1 · 基础底座
+- [x] ✅ 整体布局（7 服务左导航）
+- [x] ✅ i18n + **RTL（阿语）**（en/ar 已接；🟡 hi/tl 文案待补）
+- [x] ✅ 路由（全 7 屏）
+- [x] ✅ 登录与鉴权（`LoginGate`：MOE-APPKEY+角色，🟡 MVP，生产需 login→token）
+- [x] ✅ 统一加载/错误/空状态 + `ErrorBoundary`
+
+### 阶段 2 · 各模块页面（7 屏，均 🟡 MVP 深度、有单测+联合集成）
+- [x] ✅ Campaign(M3+M1)：列表 + 三步向导 + **Flow 画布(React Flow)** + 频控 + RunResult
+- [x] ✅ Audience(M2)：规则构造器↔DSL双向 + NL2SQL + 实时人数 + 模板 + Compile SQL
+- [x] ✅ Analytics(M4+M9)：ECharts 漏斗 + 跨产品 + 归因 + 报表 + 自动洞察
+- [x] ✅ Personalization(M5)：注册/发布 + 多语言 payload 编辑器 + fetch 测试器
+- [x] ✅ Content(M6)：多语种生成 + 行内合规(阿语RTL) + 合规检查 + 选优
+- [x] ✅ Experiment(M7)：5% 切流 + 对照报告(判定/显著性/CI)
+- [x] ✅ Data(M8)：DQC 看板 + 身份解析 + 抑制检查 + ingest
+
+### 阶段 3 · 横切
+- [x] 🟡 RTL（阿语已通；全量像素级打磨待补）
+- [x] 🟡 RBAC（LoginGate 存角色；按路由/按钮强制鉴权未做）
+- [ ] ⬜ 可访问性(a11y) 系统化
+- [ ] ⬜ 操作审计日志
+
+### 阶段 4 · 测试与交付
+- [x] ✅ 组件单测(Vitest)：51 通过 / 9 文件
+- [x] ✅ 联合集成(真实网关，7 服务)：21 通过
+- [x] 🟡 E2E(Playwright)：已接入；1/2（1 真实用例通过，1 受 chromium 冷启动超时）
+- [ ] ⬜ Storybook
+- [ ] ⬜ 接入 CI（前端 job：tsc+vitest+build）
+- [ ] ⬜ Docker 构建 + 网关反代部署
+
+### 后端前置（前端生产化依赖，需后端补）
+- [ ] ⬜ 各服务导出 OpenAPI + 网关聚合
+- [ ] ⬜ CORS
+- [ ] ⬜ 登录换 token 端点
+- [ ] ⬜ 列表/保存/CRUD 端点（分群/活动/experience）
+- [ ] ⬜ 实时通道（人数预估/发送进度：轮询或 WebSocket）
+
+### 测试总览
+单测 **51** + 联合集成 **21** = **72 通过**；E2E 1/2；tsc 干净；vite build 成功。详见 `INTEGRATION-TEST-REPORT.md`。
